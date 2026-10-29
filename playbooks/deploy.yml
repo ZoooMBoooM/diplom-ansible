@@ -1,0 +1,50 @@
+---
+- name: Deploy diplom application
+  hosts: web
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_directory }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Create Docker Compose configuration
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/compose.yaml.j2"
+        dest: "{{ app_directory }}/compose.yaml"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Pull image and start application
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_directory }}"
+        state: present
+        pull: always
+        remove_orphans: true
+        wait: true
+        wait_timeout: 120
+
+    - name: Wait for application HTTP response
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: app_response
+      until: app_response.status | default(0) == 200
+      retries: 12
+      delay: 5
+      changed_when: false
+
+    - name: Verify application page
+      ansible.builtin.assert:
+        that:
+          - app_expected_text in app_response.content
+        fail_msg: "HTTP is available, but the expected application text was not found."
+        success_msg: "Application is running and returns the expected page."

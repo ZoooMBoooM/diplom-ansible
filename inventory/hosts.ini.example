@@ -1,0 +1,2 @@
+[web]
+diplom-vm ansible_host=VM_PUBLIC_IP ansible_user=ubuntu

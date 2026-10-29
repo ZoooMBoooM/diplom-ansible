@@ -1,0 +1,77 @@
+---
+- name: Install Docker on Ubuntu
+  hosts: web
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Verify supported operating system
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_version'] == '24.04'
+          - ansible_facts['architecture'] == 'x86_64'
+        fail_msg: "This playbook expects Ubuntu 24.04 amd64."
+
+  tasks:
+    - name: Install repository prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - python3-debian
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+        lock_timeout: 300
+
+    - name: Configure official Docker APT repository
+      ansible.builtin.deb822_repository:
+        name: docker
+        types:
+          - deb
+        uris:
+          - https://download.docker.com/linux/ubuntu
+        suites:
+          - noble
+        components:
+          - stable
+        architectures:
+          - amd64
+        signed_by: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+        enabled: true
+
+    - name: Install Docker Engine and Compose plugin
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+        lock_timeout: 300
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Add ubuntu user to docker group
+      ansible.builtin.user:
+        name: ubuntu
+        groups:
+          - docker
+        append: true
+
+    - name: Check Docker Engine
+      ansible.builtin.command:
+        cmd: docker version
+      changed_when: false
+
+    - name: Check Docker Compose plugin
+      ansible.builtin.command:
+        cmd: docker compose version
+      changed_when: false

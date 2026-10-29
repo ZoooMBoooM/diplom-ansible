@@ -1,0 +1,6 @@
+---
+app_directory: /home/ubuntu/diplom
+app_image: zooombooom/diplom:latest
+app_container_name: diplom-web
+app_port: 8080
+app_expected_text: "DevOps diplom: Knyazev Evgeny"
